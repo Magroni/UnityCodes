@@ -2,36 +2,63 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class ThirdPersonMovement : MonoBehaviour
+public class ThirdPersonController : MonoBehaviour
 {
-    // Start is called before the first frame update
+    public Transform cameraTransform;
     public CharacterController controller;
-    public Transform cam;
+    public float moveSpeed = 6.0f;
+    public float rotationSpeed = 5.0f;
+    public float jumpSpeed = 8.0f;
+    public float gravity = 20.0f;
+
+    private float verticalVelocity;
 
     private void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
     }
-    [SerializeField] private float speed;
-    [SerializeField] private float turnSmoothTime = 0.1f;
-    [SerializeField] private float turnSmoothVelocity;
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-        Vector3 direction = new Vector3(horizontal, 0f, vertical).normalized;
+        // Movimentação do personagem
+        float horizontalInput = Input.GetAxis("Horizontal");
+        float verticalInput = Input.GetAxis("Vertical");
+        Vector3 moveDirection = (cameraTransform.forward * verticalInput + cameraTransform.right * horizontalInput).normalized;
+        moveDirection.y = 0;
 
-        if (direction.magnitude >= 0.1f)
+        if (controller.isGrounded)
         {
-            float targetAngle = Mathf.Atan2(direction.x, direction.z) * Mathf.Rad2Deg + cam.eulerAngles.y;
-            float angle = Mathf.SmoothDampAngle(transform.eulerAngles.y, targetAngle, ref turnSmoothVelocity, turnSmoothTime);
-            transform.rotation = Quaternion.Euler(0f, angle, 0f);
+            verticalVelocity = 0;
 
-            Vector3 moveDir = Quaternion.Euler(0f, targetAngle, 0f) * Vector3.forward;
-            controller.Move(moveDir.normalized * speed * Time.deltaTime);
+            if (Input.GetButtonDown("Jump"))
+            {
+                verticalVelocity = jumpSpeed;
+            }
         }
-            
+
+        verticalVelocity -= gravity * Time.deltaTime;
+        moveDirection.y = verticalVelocity;
+
+        controller.Move(moveDirection * moveSpeed * Time.deltaTime);
+
+        // Rotação do personagem com base na rotação da câmera
+        float horizontalLook = Input.GetAxis("Mouse X") * rotationSpeed;
+        transform.Rotate(0, horizontalLook, 0);
+
+        // Rotação da câmera vertical
+        float verticalLook = Input.GetAxis("Mouse Y") * rotationSpeed;
+        Vector3 currentCameraRotation = cameraTransform.eulerAngles;
+        currentCameraRotation.x -= verticalLook;
+        cameraTransform.eulerAngles = currentCameraRotation;
+        
+        // Controle da câmera com controle de Xbox
+        float rightStickX = Input.GetAxis("RightStickX");
+        float rightStickY = Input.GetAxis("RightStickY");
+
+        Vector3 cameraEulerAngles = cameraTransform.eulerAngles;
+        cameraEulerAngles.x += rightStickY * rotationSpeed;
+        cameraEulerAngles.y += rightStickX * rotationSpeed;
+        cameraTransform.eulerAngles = cameraEulerAngles;
     }
 }
